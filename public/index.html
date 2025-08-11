@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mikro — Shopify Segment Dashboard</title>
+  <style>
+    :root { --bg:#0b0c0f; --card:#111318; --text:#e8e9ec; --muted:#9aa0a6; }
+    html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter;}
+    .wrap{max-width:980px;margin:24px auto;padding:16px;}
+    .grid{display:grid;gap:12px;grid-template-columns:repeat(4,minmax(0,1fr));}
+    .card{background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 0 rgba(255,255,255,.06) inset, 0 20px 40px rgba(0,0,0,.35);}
+    .kpi{display:flex;flex-direction:column;gap:4px}
+    .label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+    .value{font-weight:700;font-size:22px}
+    .delta.up{color:#22c55e}.delta.down{color:#ef4444}
+    canvas{background:transparent; border-radius:16px}
+    @media (max-width:900px){ .grid{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:560px){ .grid{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 style="margin:0 0 12px">Shopify Performance — Selected Segment</h1>
+    <div class="grid">
+      <div class="card kpi"><div class="label">Sessions</div><div class="value" id="sessions">--</div><div class="delta" id="sessionsDelta"></div></div>
+      <div class="card kpi"><div class="label">Total sales (AUD)</div><div class="value" id="sales">--</div><div class="delta" id="salesDelta"></div></div>
+      <div class="card kpi"><div class="label">Orders</div><div class="value" id="orders">--</div><div class="delta" id="ordersDelta"></div></div>
+      <div class="card kpi"><div class="label">Conversion rate</div><div class="value" id="cr">--</div><div class="delta" id="crDelta"></div></div>
+    </div>
+
+    <div class="card" style="margin-top:12px;padding:8px 12px 16px">
+      <div class="label" style="margin:6px 4px 10px">Traffic & sales (last 90 days)</div>
+      <canvas id="trend" height="120"></canvas>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="label">Notes</div>
+      <div style="color:#c7c9ce;font-size:14px;margin-top:6px">
+        Source: Shopify Admin (segment view) and GA4. This dashboard refreshes nightly via GitHub Actions.
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart.js (no external styling needed) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    /**
+     * Loads KPI and series data from the JSON file and updates the DOM.
+     */
+    async function loadData() {
+      try {
+        const res = await fetch('data/segment.json', { cache: 'no-store' });
+        const data = await res.json();
+        // Update KPIs
+        document.getElementById('sessions').textContent = Intl.NumberFormat().format(data.sessions ?? 0);
+        document.getElementById('orders').textContent   = Intl.NumberFormat().format(data.orders ?? 0);
+        document.getElementById('sales').textContent    = `A$${Number(data.sales ?? 0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        document.getElementById('cr').textContent       = `${(data.conversionRate ?? 0).toFixed(2)}%`;
+        // Deltas (if provided)
+        updateDelta('sessionsDelta', data.sessionsDelta);
+        updateDelta('ordersDelta', data.ordersDelta);
+        updateDelta('salesDelta', data.salesDelta);
+        updateDelta('crDelta', data.conversionRateDelta);
+        // Draw chart if series provided
+        if (Array.isArray(data.labels) && Array.isArray(data.series)) {
+          drawChart(data.labels, data.series);
+        }
+      } catch (err) {
+        console.error('Failed to load segment.json', err);
+      }
+    }
+    function updateDelta(id, value) {
+      const el = document.getElementById(id);
+      if (value == null) {
+        el.textContent = '';
+        el.className = 'delta';
+        return;
+      }
+      const pct = Math.abs(value).toFixed(0);
+      el.textContent = `${value >= 0 ? '↑' : '↓'} ${pct}%`;
+      el.className = `delta ${value >= 0 ? 'up' : 'down'}`;
+    }
+    function drawChart(labels, series) {
+      const ctx = document.getElementById('trend');
+      new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{ data: series, fill: false, tension: .35, pointRadius: 0 }]},
+        options: {
+          plugins:{ legend: { display:false }, tooltip:{ mode:'index', intersect:false }},
+          scales:{
+            x:{ grid:{ display:false }, ticks:{ color:'#c7c9ce' } },
+            y:{ grid:{ color:'rgba(255,255,255,.08)' }, ticks:{ color:'#c7c9ce' } }
+          }
+        }
+      });
+    }
+    loadData();
+  </script>
+</body>
+</html>
