@@ -1,0 +1,25 @@
+{
+  "sessions": 2481,
+  "sessionsDelta": 84,
+  "orders": 70,
+  "ordersDelta": 75,
+  "sales": 6448.17,
+  "salesDelta": 61,
+  "conversionRate": 2.22,
+  "conversionRateDelta": -12,
+  "labels": [
+    "May 13",
+    "May 21",
+    "May 29",
+    "Jun 6",
+    "Jun 14",
+    "Jun 22",
+    "Jun 30",
+    "Jul 8",
+    "Jul 16",
+    "Jul 24",
+    "Aug 1",
+    "Aug 9"
+  ],
+  "series": [8, 22, 15, 10, 18, 30, 24, 26, 110, 42, 18, 28]
+}
