@@ -1,0 +1,43 @@
+name: Update segment data
+
+on:
+  schedule:
+    - cron: '0 18 * * *' # Runs at 18:00 UTC daily (04:00 AEST during daylight saving). Adjust as needed.
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install @google-analytics/data node-fetch
+
+      - name: Generate segment data
+        env:
+          SHOPIFY_STORE: ${{ secrets.SHOPIFY_STORE }}
+          SHOPIFY_ADMIN_TOKEN: ${{ secrets.SHOPIFY_ADMIN_TOKEN }}
+          GA4_PROPERTY_ID: ${{ secrets.GA4_PROPERTY_ID }}
+          GA4_CLIENT_EMAIL: ${{ secrets.GA4_CLIENT_EMAIL }}
+          GA4_PRIVATE_KEY: ${{ secrets.GA4_PRIVATE_KEY }}
+        run: node scripts/update.js
+
+      - name: Copy segment data to docs
+        run: |
+          mkdir -p docs/data
+          cp public/data/segment.json docs/data/segment.json
+
+      - name: Commit updated segment data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/segment.json docs/data/segment.json
+          git commit -m "Update segment data" || echo "No changes to commit"
+          git push
